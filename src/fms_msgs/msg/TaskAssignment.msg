@@ -1,0 +1,12 @@
+std_msgs/Header header
+string task_id
+string robot_id
+uint8 task_type
+uint8 TASK_PICK=0
+uint8 TASK_DROP=1
+uint8 TASK_CHARGE=2
+geometry_msgs/Pose pick_pose
+geometry_msgs/Pose drop_pose
+string payload_id
+uint8 priority
+float32 deadline_secs

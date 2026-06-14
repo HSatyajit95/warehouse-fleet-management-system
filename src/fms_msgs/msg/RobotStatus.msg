@@ -1,0 +1,14 @@
+std_msgs/Header header
+string robot_id
+uint8 state
+uint8 STATE_IDLE=0
+uint8 STATE_ASSIGNED=1
+uint8 STATE_NAVIGATING=2
+uint8 STATE_EXECUTING=3
+uint8 STATE_REPORTING=4
+uint8 STATE_RECOVERING=5
+uint8 STATE_CHARGING=6
+geometry_msgs/Pose pose
+float32 battery_soc
+string current_task_id
+string status_message

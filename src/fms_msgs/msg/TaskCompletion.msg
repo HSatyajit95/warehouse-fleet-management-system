@@ -1,0 +1,9 @@
+std_msgs/Header header
+string task_id
+string robot_id
+uint8 result
+uint8 RESULT_SUCCESS=0
+uint8 RESULT_FAILED=1
+uint8 RESULT_CANCELLED=2
+float32 duration_secs
+string error_message

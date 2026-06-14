@@ -1,0 +1,14 @@
+robot_agent:
+  ros__parameters:
+    # Timing
+    pick_duration_secs: 3.0
+    drop_duration_secs: 2.0
+    recovery_max_attempts: 3
+
+    # Battery
+    initial_battery_soc: 100.0
+    low_battery_threshold: 20.0
+
+    # Charger dock for each robot (x, y, yaw_deg in map frame)
+    # Override per-robot in the launch file via nested parameter.
+    charger_pose: [-20.0, 0.0, 180.0]

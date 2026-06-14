@@ -1,0 +1,10 @@
+# ros_gz_bridge configuration template.
+# Actual per-robot bridge files are generated at launch time with ROBOT_NAME substituted.
+# This file documents the bridge mappings; see bridge_robot.launch.py for usage.
+
+# /ROBOT_NAME/cmd_vel       ros_msgs: geometry_msgs/msg/Twist    gz_msgs: gz.msgs.Twist     direction: ROS->GZ
+# /ROBOT_NAME/odom          ros_msgs: nav_msgs/msg/Odometry      gz_msgs: gz.msgs.Odometry  direction: GZ->ROS
+# /ROBOT_NAME/scan          ros_msgs: sensor_msgs/msg/LaserScan  gz_msgs: gz.msgs.LaserScan direction: GZ->ROS
+# /ROBOT_NAME/imu           ros_msgs: sensor_msgs/msg/Imu        gz_msgs: gz.msgs.IMU       direction: GZ->ROS
+# /ROBOT_NAME/joint_states  ros_msgs: sensor_msgs/msg/JointState gz_msgs: gz.msgs.Model     direction: GZ->ROS
+# /ROBOT_NAME/tf            ros_msgs: tf2_msgs/msg/TFMessage      gz_msgs: gz.msgs.Pose_V    direction: GZ->ROS

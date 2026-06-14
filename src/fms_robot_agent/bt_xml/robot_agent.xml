@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<!--
+  robot_agent.xml — Behavior tree for one FMS warehouse robot.
+
+  Root: ReactiveFallback evaluates children left-to-right every tick.
+    Child 0: ChargeWhenLow — runs ONLY when battery is low (Inverter flips BatteryOK).
+             Halts TaskExecution if it was running.
+    Child 1: TaskExecution — normal pick-and-drop cycle.
+
+  Battery priority: when SOC < threshold, the robot navigates to its charger dock
+  and waits until full before resuming/accepting tasks.
+
+  Recovery: each NavigateToPose is wrapped in RetryUntilSuccessful + Fallback
+  so that RequestRecovery (spin + backup) is attempted up to 3 times before
+  the task is abandoned.
+-->
+<root main_tree_to_execute="RobotAgentMain">
+  <BehaviorTree ID="RobotAgentMain">
+
+    <ReactiveFallback name="Root">
+
+      <!-- Priority 0: charge when battery is low -->
+      <Sequence name="ChargeWhenLow">
+        <Inverter>
+          <BatteryOK threshold="20.0"/>
+        </Inverter>
+        <!-- Navigate to assigned charger dock for this robot -->
+        <NavigateToPose name="NavToCharger" goal="{charger_pose}"/>
+        <ChargeBattery/>
+      </Sequence>
+
+      <!-- Priority 1: normal task lifecycle -->
+      <Sequence name="TaskExecution">
+
+        <!-- Block until a task arrives (or interrupted task is restored) -->
+        <RequestTask pick_pose="{pick_pose}" drop_pose="{drop_pose}"/>
+
+        <!-- Navigate to pick location with up to 3 recovery attempts -->
+        <RetryUntilSuccessful num_attempts="3" name="NavToPickRetry">
+          <Fallback name="NavToPickFallback">
+            <NavigateToPose name="NavToPick" goal="{pick_pose}"/>
+            <RequestRecovery name="RecoverPick" max_attempts="3"/>
+          </Fallback>
+        </RetryUntilSuccessful>
+
+        <!-- Simulate pick operation -->
+        <ExecutePickDrop name="DoPick" operation="pick" duration_secs="{pick_duration}"/>
+
+        <!-- Navigate to drop location with up to 3 recovery attempts -->
+        <RetryUntilSuccessful num_attempts="3" name="NavToDropRetry">
+          <Fallback name="NavToDropFallback">
+            <NavigateToPose name="NavToDrop" goal="{drop_pose}"/>
+            <RequestRecovery name="RecoverDrop" max_attempts="3"/>
+          </Fallback>
+        </RetryUntilSuccessful>
+
+        <!-- Simulate drop operation -->
+        <ExecutePickDrop name="DoDrop" operation="drop" duration_secs="{drop_duration}"/>
+
+        <!-- Publish TaskCompletion and reset to IDLE -->
+        <ReportStatus name="Report"/>
+
+      </Sequence>
+
+    </ReactiveFallback>
+
+  </BehaviorTree>
+</root>
