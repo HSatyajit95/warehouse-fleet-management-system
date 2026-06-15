@@ -3,9 +3,8 @@
 A multi-robot warehouse simulation built on **ROS 2 Humble** and
 **Gazebo Harmonic**. Each robot runs an autonomous pick-and-drop task
 cycle using a Finite State Machine (FSM) and a BehaviorTree.CPP-based
-agent on top of Nav2. A fleet-level controller (in progress) will
-coordinate task allocation across the fleet via gRPC, RabbitMQ, and
-MongoDB.
+agent on top of Nav2. A fleet-level controller coordinates task
+allocation across the fleet via gRPC, RabbitMQ, and MongoDB.
 
 ## Project Status
 
@@ -13,7 +12,7 @@ MongoDB.
 |---|---|---|
 | 1 | Simulation foundation — Gazebo warehouse world, robot URDF, Nav2 bringup, TF | ✅ Complete & Verified |
 | 2 | Robot agent — FSM + BehaviorTree (pick → drop → report), battery model, fault injection | ✅ Complete & Verified |
-| 3 | Fleet controller — gRPC server, RabbitMQ task queue, MongoDB persistence, task allocator | 🔲 In Progress |
+| 3 | Fleet controller — gRPC server, RabbitMQ task queue, MongoDB persistence, task allocator | ✅ Complete & Verified |
 | 4 | REST API, Docker Compose, CI | 🔲 Not Started |
 
 See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for details and
@@ -29,6 +28,10 @@ See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for details and
   navigation config
 - **`fms_robot_agent`** — robot-side FSM and BehaviorTree.CPP agent, battery
   model, task injector script
+- **`fms_fleet_server`** — fleet controller: gRPC `FleetService` (`SubmitTask`,
+  `GetFleetStatus`, `GetTaskStatus`), RabbitMQ task queue with dead-letter
+  exchange, MongoDB-backed task/telemetry persistence, and a distance+SOC
+  based task allocator
 
 ## Prerequisites
 
@@ -50,7 +53,7 @@ source install/setup.bash
 ## Running the simulation
 
 ```bash
-ros2 launch fms_gazebo bringup.launch.py num_robots:=1
+ros2 launch fms_navigation bringup.launch.py num_robots:=1
 ```
 
 Then inject a task:
@@ -63,6 +66,18 @@ See [docs/VERIFICATION_CHECKLIST.md](docs/VERIFICATION_CHECKLIST.md) for a
 full terminal-by-terminal walkthrough, and
 [docs/GLOSSARY.md](docs/GLOSSARY.md) for explanations of the key concepts
 and technologies used across the project.
+
+## Fleet server & load testing
+
+```bash
+ros2 run fms_fleet_server fleet_server_node
+```
+
+Exposes the `FleetService` gRPC API (default port `50051`) for submitting
+pick→drop tasks and querying fleet/task status. See
+[docs/LOAD_TESTING.md](docs/LOAD_TESTING.md) for the paced gRPC load-test
+tool (`src/fms_fleet_server/scripts/load_test.py`) and full setup
+instructions.
 
 ## Documentation
 
