@@ -124,6 +124,9 @@ CallbackReturn RobotAgentNode::on_configure(const rclcpp_lifecycle::State&) {
 
   last_battery_update_ = get_clock()->now();
 
+  tf_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
+  tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
+
   RCLCPP_INFO(get_logger(), "[%s] Configured. SOC=%.0f%%", robot_name_.c_str(), battery_.soc());
   return CallbackReturn::SUCCESS;
 }
@@ -233,6 +236,19 @@ void RobotAgentNode::status_publish_cb() {
     }
   }
   msg.status_message = fsm_.state_name();
+
+  try {
+    auto tf = tf_buffer_->lookupTransform(
+        "map", robot_name_ + "/base_footprint", tf2::TimePointZero);
+    msg.pose.position.x = tf.transform.translation.x;
+    msg.pose.position.y = tf.transform.translation.y;
+    msg.pose.position.z = tf.transform.translation.z;
+    msg.pose.orientation = tf.transform.rotation;
+  } catch (const tf2::TransformException& e) {
+    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+        "[%s] Could not look up map -> %s/base_footprint: %s",
+        robot_name_.c_str(), robot_name_.c_str(), e.what());
+  }
 
   status_pub_->publish(msg);
 }

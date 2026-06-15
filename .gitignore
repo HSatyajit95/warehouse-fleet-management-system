@@ -20,6 +20,9 @@ rosgraph.png
 rosgraph.svg
 GitHub_PAT.txt
 
+# Load test output
+outputs/
+
 # Misc
 *.bak
 *.swp

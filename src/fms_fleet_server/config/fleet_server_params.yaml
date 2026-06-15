@@ -1,0 +1,11 @@
+fleet_server:
+  ros__parameters:
+    num_robots: 4
+    mongo_uri: "mongodb://localhost:27017"
+    mongo_db: "fms"
+    soc_weight: 0.5
+    rabbitmq_host: "localhost"
+    rabbitmq_port: 5672
+    rabbitmq_user: "guest"
+    rabbitmq_password: "guest"
+    grpc_port: 50051

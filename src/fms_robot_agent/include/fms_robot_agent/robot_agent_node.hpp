@@ -14,6 +14,8 @@
 #include <fms_msgs/msg/task_completion.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 
 #include "fms_robot_agent/robot_fsm.hpp"
 #include "fms_robot_agent/battery_model.hpp"
@@ -126,6 +128,10 @@ private:
 
   // Battery update bookkeeping
   rclcpp::Time last_battery_update_;
+
+  // TF (for populating RobotStatus.pose from map -> <robot_name>/base_footprint)
+  std::unique_ptr<tf2_ros::Buffer>            tf_buffer_;
+  std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
 };
 
 }  // namespace fms_robot_agent

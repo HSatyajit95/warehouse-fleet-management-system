@@ -18,6 +18,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(fms_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 set(DEPS
   rclcpp
@@ -29,6 +30,7 @@ set(DEPS
   std_msgs
   std_srvs
   fms_msgs
+  tf2_ros
 )
 
 add_library(fms_agent_lib SHARED
@@ -71,6 +73,8 @@ install(DIRECTORY launch config bt_xml
 
 install(PROGRAMS
   scripts/task_injector.py
+  scripts/task_request.py
+  scripts/task_request_amqp.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

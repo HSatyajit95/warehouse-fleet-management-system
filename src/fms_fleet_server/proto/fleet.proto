@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package fms_fleet_server;
+
+// Phase 3.5 — gRPC interface to the fleet server. Mirrors the ROS
+// (/fleet/task_request) and RabbitMQ (tasks.incoming) allocator entry points,
+// and exposes read access to live fleet state and task lifecycle records.
+service FleetService {
+  // Submit an unassigned task; the allocator scores IDLE robots and assigns
+  // the task to the best candidate (same logic as Step 3.3/3.4).
+  rpc SubmitTask(SubmitTaskRequest) returns (SubmitTaskResponse);
+
+  // Snapshot of the latest known status for every tracked robot.
+  rpc GetFleetStatus(GetFleetStatusRequest) returns (GetFleetStatusResponse);
+
+  // Look up a task's lifecycle record (ASSIGNED/COMPLETED/FAILED/CANCELLED)
+  // from the `tasks` MongoDB collection.
+  rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse);
+}
+
+message Pose2D {
+  double x = 1;
+  double y = 2;
+}
+
+message SubmitTaskRequest {
+  uint32 task_type     = 1;  // 0=PICK, 1=DROP, 2=CHARGE
+  Pose2D pick_pose     = 2;
+  Pose2D drop_pose     = 3;
+  string payload_id    = 4;
+  uint32 priority      = 5;
+  double deadline_secs = 6;
+}
+
+message SubmitTaskResponse {
+  bool   accepted = 1;
+  string task_id  = 2;
+  string robot_id = 3;
+  string message  = 4;
+}
+
+message GetFleetStatusRequest {}
+
+message RobotStatusInfo {
+  string robot_id        = 1;
+  uint32 state           = 2;
+  string state_str       = 3;
+  float  battery_soc     = 4;
+  string current_task_id = 5;
+  Pose2D pose            = 6;
+}
+
+message GetFleetStatusResponse {
+  repeated RobotStatusInfo robots = 1;
+}
+
+message GetTaskStatusRequest {
+  string task_id = 1;
+}
+
+message GetTaskStatusResponse {
+  bool   found         = 1;
+  string task_id       = 2;
+  string robot_id      = 3;
+  string status        = 4;
+  int32  result         = 5;
+  double duration_secs = 6;
+  string error_message = 7;
+}
