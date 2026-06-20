@@ -92,3 +92,9 @@ instructions.
 ## Documentation
 
 All design docs, plans, and verification guides live in [docs/](docs/).
+For a single copy-pasteable reference covering every terminal command in
+this project — build, simulate, inject tasks, query the fleet/REST API,
+run tests, and inspect every topic/service/action/database — see
+[docs/COMMAND_REFERENCE.md](docs/COMMAND_REFERENCE.md). For the system
+design and sim-to-real deployment blueprint, see
+[docs/SYSTEM_ARCHITECTURE.md](docs/SYSTEM_ARCHITECTURE.md).
