@@ -1,0 +1,67 @@
+# Phase 4.6 — full server-side stack: mongodb + rabbitmq + fleet-server +
+# fms-api, started together with `docker compose up` (run from this
+# directory, or `docker compose -f docker/docker-compose.yml up` from repo
+# root).
+#
+# Gazebo/Nav2/the robot agents are NOT containerized (need a GPU/display —
+# see docs/PHASE4_PLAN.md's design decisions) and keep running on the host
+# as before. fleet-server and fms-api use `network_mode: host` so
+# fleet-server can see ROS 2 DDS traffic from the host-run robot agents,
+# and both can reach mongodb/rabbitmq via "localhost" once those containers'
+# ports are published to the host below.
+#
+# Before `docker compose up`: stop any natively-running mongod/RabbitMQ/
+# fleet_server_node/uvicorn so they don't conflict on the same ports —
+# e.g. `sudo systemctl stop rabbitmq-server` and `docker stop fms-mongo`
+# if you have Phase 3's manually-started containers/services up.
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: fms-compose-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    container_name: fms-compose-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # management UI, http://localhost:15672 (guest/guest)
+    restart: unless-stopped
+
+  fleet-server:
+    build:
+      context: ..
+      dockerfile: docker/fleet-server.Dockerfile
+    container_name: fms-compose-fleet-server
+    network_mode: host
+    depends_on:
+      - mongodb
+      - rabbitmq
+    environment:
+      MONGO_URI: mongodb://localhost:27017
+      MONGO_DB: fms
+      RABBITMQ_HOST: localhost
+      RABBITMQ_PORT: "5672"
+      GRPC_PORT: "50051"
+      NUM_ROBOTS: "${NUM_ROBOTS:-4}"
+    restart: unless-stopped
+
+  fms-api:
+    build:
+      context: ..
+      dockerfile: docker/fms-api.Dockerfile
+    container_name: fms-compose-api
+    network_mode: host
+    depends_on:
+      - fleet-server
+    environment:
+      FLEET_SERVER_ADDR: localhost:50051
+    restart: unless-stopped
+
+volumes:
+  mongo_data:

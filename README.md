@@ -13,10 +13,12 @@ allocation across the fleet via gRPC, RabbitMQ, and MongoDB.
 | 1 | Simulation foundation — Gazebo warehouse world, robot URDF, Nav2 bringup, TF | ✅ Complete & Verified |
 | 2 | Robot agent — FSM + BehaviorTree (pick → drop → report), battery model, fault injection | ✅ Complete & Verified |
 | 3 | Fleet controller — gRPC server, RabbitMQ task queue, MongoDB persistence, task allocator | ✅ Complete & Verified |
-| 4 | REST API, Docker Compose, CI | 🔲 Not Started |
+| 4 | REST API, Docker Compose, CI | ✅ Complete & Verified |
 
-See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for details and
-[docs/PLAN.md](docs/PLAN.md) for the full project plan.
+See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for details,
+[docs/PLAN.md](docs/PLAN.md) for the full project plan, and
+[docs/PHASE4_PLAN.md](docs/PHASE4_PLAN.md) /
+[docs/PHASE4_PROGRESS.md](docs/PHASE4_PROGRESS.md) for the current phase.
 
 ## Packages
 
@@ -29,15 +31,23 @@ See [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) for details and
 - **`fms_robot_agent`** — robot-side FSM and BehaviorTree.CPP agent, battery
   model, task injector script
 - **`fms_fleet_server`** — fleet controller: gRPC `FleetService` (`SubmitTask`,
-  `GetFleetStatus`, `GetTaskStatus`), RabbitMQ task queue with dead-letter
-  exchange, MongoDB-backed task/telemetry persistence, and a distance+SOC
-  based task allocator
+  `GetFleetStatus`, `GetTaskStatus`, `SendRobotCommand`), RabbitMQ task queue
+  with dead-letter exchange, MongoDB-backed task/telemetry persistence, and a
+  distance+SOC based task allocator
+- **`fms_api`** — FastAPI REST front-end proxying the fleet server's gRPC API
+  (`POST /tasks`, `GET /tasks/{id}`, `GET /fleet/status`,
+  `POST /robots/{id}/command`); see [src/fms_api/README.md](src/fms_api/README.md)
 
 ## Prerequisites
 
 - Ubuntu 22.04, ROS 2 Humble, Gazebo Harmonic
 - Phase 3 additionally requires gRPC, RabbitMQ, and MongoDB — see
   [docs/PHASE3_PREREQUISITES.md](docs/PHASE3_PREREQUISITES.md)
+- Phase 4's server-side stack (`fleet-server`, `rabbitmq`, `mongodb`,
+  `fms-api`) can run natively (as above) or via
+  `docker compose -f docker/docker-compose.yml up` — see
+  [docs/PHASE4_PROGRESS.md](docs/PHASE4_PROGRESS.md) for details (the two
+  approaches share host ports and aren't meant to run simultaneously)
 
 ## Build
 

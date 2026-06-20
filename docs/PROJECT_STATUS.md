@@ -40,7 +40,14 @@ New package: `fms_fleet_server/` (C++, gRPC server)
 
 ---
 
-## Phase 4 — REST API, Docker & CI: 🔲 Not Started
+## Phase 4 — REST API, Docker & CI: ✅ Complete (CI workflow not yet run on GitHub)
+
+See [PHASE4_PLAN.md](PHASE4_PLAN.md) for the full design and
+[PHASE4_PROGRESS.md](PHASE4_PROGRESS.md) for step-by-step status. All 7
+steps (REST API, gTest/cTest coverage, Docker Compose, GitHub Actions CI)
+are implemented and verified locally. The CI workflow
+(`.github/workflows/ci.yml`) hasn't had an actual GitHub Actions run yet —
+that needs a push/PR, not done without explicit confirmation.
 
 New package: `fms_api/` (Python, FastAPI) + repo-level Docker/CI config
 

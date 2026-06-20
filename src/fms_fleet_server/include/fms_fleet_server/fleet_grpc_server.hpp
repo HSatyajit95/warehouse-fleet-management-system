@@ -33,6 +33,10 @@ public:
                               const GetTaskStatusRequest* request,
                               GetTaskStatusResponse* response) override;
 
+  grpc::Status SendRobotCommand(grpc::ServerContext* context,
+                                 const SendRobotCommandRequest* request,
+                                 SendRobotCommandResponse* response) override;
+
 private:
   FleetServerNode* node_;
   std::string address_;

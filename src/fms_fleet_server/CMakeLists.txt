@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(fms_msgs REQUIRED)
 find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
@@ -54,11 +55,13 @@ set(DEPS
   rclcpp
   geometry_msgs
   std_msgs
+  std_srvs
   fms_msgs
 )
 
 add_library(fms_fleet_lib SHARED
   src/fleet_server_node.cpp
+  src/task_allocator.cpp
   src/mongo_store.cpp
   src/rabbitmq_client.cpp
   src/fleet_grpc_server.cpp
@@ -95,5 +98,24 @@ install(DIRECTORY include/
 install(DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
 )
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_task_allocator test/test_task_allocator.cpp)
+  target_link_libraries(test_task_allocator fms_fleet_lib)
+  ament_target_dependencies(test_task_allocator fms_msgs)
+
+  # Phase 4.5 — full task lifecycle integration test (gRPC -> allocator ->
+  # MongoDB), using a mock robot instead of Gazebo. SKIPs (not a failure)
+  # if MongoDB/RabbitMQ aren't reachable; see test/integration/test_task_lifecycle.py.
+  add_test(
+    NAME task_lifecycle_integration
+    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/test/integration/test_task_lifecycle.py
+  )
+  set_tests_properties(task_lifecycle_integration PROPERTIES
+    TIMEOUT 60
+    SKIP_RETURN_CODE 99
+  )
+endif()
 
 ament_package()

@@ -6,6 +6,14 @@ log/
 # Python
 __pycache__/
 *.pyc
+.venv/
+.pytest_cache/
+
+# Generated gRPC stubs (fms_api) — regenerate via generate_grpc.sh
+src/fms_api/fms_api/generated/*_pb2*.py
+
+# Docker Compose local overrides
+docker/.env
 
 # IDE
 .vscode/

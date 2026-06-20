@@ -90,4 +90,14 @@ grpc::Status FleetGrpcServer::GetTaskStatus(grpc::ServerContext* /*context*/,
   return grpc::Status::OK;
 }
 
+grpc::Status FleetGrpcServer::SendRobotCommand(grpc::ServerContext* /*context*/,
+                                                const SendRobotCommandRequest* request,
+                                                SendRobotCommandResponse* response)
+{
+  auto result = node_->send_robot_command(request->robot_id(), request->command(), request->value());
+  response->set_success(result.success);
+  response->set_message(result.message);
+  return grpc::Status::OK;
+}
+
 }  // namespace fms_fleet_server

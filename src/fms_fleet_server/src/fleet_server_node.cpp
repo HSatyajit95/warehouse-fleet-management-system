@@ -1,5 +1,6 @@
 #include "fms_fleet_server/fleet_server_node.hpp"
 #include "fms_fleet_server/robot_status_utils.hpp"
+#include "fms_fleet_server/task_allocator.hpp"
 #include "fms_fleet_server/task_utils.hpp"
 
 #include <nlohmann/json.hpp>
@@ -41,6 +42,9 @@ FleetServerNode::FleetServerNode(const rclcpp::NodeOptions& opts)
 
     task_assignment_pubs_.push_back(create_publisher<fms_msgs::msg::TaskAssignment>(
         "/" + robot_name + "/task_assignment", rclcpp::QoS(10)));
+
+    fault_clients_[robot_name] = create_client<std_srvs::srv::SetBool>(
+        "/" + robot_name + "/inject_fault");
   }
 
   task_request_sub_ = create_subscription<fms_msgs::msg::TaskAssignment>(
@@ -118,6 +122,35 @@ std::optional<TaskRecord> FleetServerNode::get_task_status(const std::string& ta
   return mongo_store_->find_task(task_id);
 }
 
+FleetServerNode::CommandResult FleetServerNode::send_robot_command(
+    const std::string& robot_id, const std::string& command, bool value)
+{
+  if (command != "inject_fault") {
+    return CommandResult{false, "unsupported command: " + command};
+  }
+
+  auto it = fault_clients_.find(robot_id);
+  if (it == fault_clients_.end()) {
+    return CommandResult{false, "unknown robot_id: " + robot_id};
+  }
+
+  auto client = it->second;
+  if (!client->service_is_ready()) {
+    return CommandResult{false, robot_id + "'s inject_fault service is not available"};
+  }
+
+  auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
+  request->data = value;
+
+  auto future = client->async_send_request(request);
+  if (future.wait_for(2s) != std::future_status::ready) {
+    return CommandResult{false, robot_id + " did not respond to inject_fault within 2s"};
+  }
+
+  auto response = future.get();
+  return CommandResult{response->success, response->message};
+}
+
 void FleetServerNode::robot_status_cb(const fms_msgs::msg::RobotStatus::SharedPtr msg)
 {
   {
@@ -154,29 +187,8 @@ void FleetServerNode::task_completion_cb(const fms_msgs::msg::TaskCompletion::Sh
 std::optional<std::pair<std::string, double>> FleetServerNode::select_robot(
     const fms_msgs::msg::TaskAssignment& request)
 {
-  std::string best_robot;
-  double best_score = std::numeric_limits<double>::max();
-
   std::lock_guard<std::mutex> lock(fleet_mutex_);
-  for (const auto& [robot_id, status] : latest_status_) {
-    if (status.state != fms_msgs::msg::RobotStatus::STATE_IDLE) {
-      continue;
-    }
-    const double dx = request.pick_pose.position.x - status.pose.position.x;
-    const double dy = request.pick_pose.position.y - status.pose.position.y;
-    const double distance_to_pick = std::sqrt(dx * dx + dy * dy);
-    const double score = distance_to_pick + (100.0 - status.battery_soc) * soc_weight_;
-
-    if (score < best_score) {
-      best_score = score;
-      best_robot = robot_id;
-    }
-  }
-
-  if (best_robot.empty()) {
-    return std::nullopt;
-  }
-  return std::make_pair(best_robot, best_score);
+  return select_best_robot(latest_status_, request, soc_weight_);
 }
 
 void FleetServerNode::dispatch_assignment(fms_msgs::msg::TaskAssignment& assignment)

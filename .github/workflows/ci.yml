@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Builds fms_msgs/fms_robot_agent/fms_fleet_server, lints them with
+  # clang-tidy (see .clang-tidy — verified 0 warnings across both packages
+  # before this was made a hard gate), then runs colcon test (gTest +
+  # Step 4.5's cTest integration test). Scoped to these three packages —
+  # fms_gazebo/fms_navigation are launch/config-only and would pull in
+  # Gazebo Harmonic + Nav2 for no test coverage gain.
+  #
+  # Runs directly on the runner (not in a ros:humble-ros-base container) so
+  # the `mongodb`/`rabbitmq` service containers below are reachable at
+  # "localhost" — matching fleet_server_node's and the integration test's
+  # existing defaults with zero code changes.
+  ros-build-lint-test:
+    runs-on: ubuntu-22.04
+    services:
+      mongodb:
+        image: mongo:7
+        ports: ["27017:27017"]
+      rabbitmq:
+        image: rabbitmq:3.9-management
+        ports: ["5672:5672"]
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup ROS 2 Humble
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: humble
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake clang-tidy \
+            libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev protobuf-compiler \
+            librabbitmq-dev nlohmann-json3-dev \
+            ros-humble-std-srvs python3-colcon-common-extensions
+
+      # mongo-c-driver/mongo-cxx-driver aren't packaged for apt at the
+      # versions this project needs (see docs/PHASE3_PREREQUISITES.md), so
+      # they're compiled from source — same versions as docker/fleet-server.Dockerfile.
+      # Cached because the from-source build takes ~10-15 minutes.
+      - name: Cache mongo-c-driver / mongo-cxx-driver
+        id: cache-mongocxx
+        uses: actions/cache@v4
+        with:
+          path: /usr/local
+          key: mongocxx-2.3.1-r4.3.1-${{ runner.os }}-v1
+
+      - name: Build mongo-c-driver
+        if: steps.cache-mongocxx.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL https://github.com/mongodb/mongo-c-driver/releases/download/2.3.1/mongo-c-driver-2.3.1.tar.gz -o /tmp/mongo-c-driver.tar.gz
+          mkdir /tmp/mongo-c-driver && tar xzf /tmp/mongo-c-driver.tar.gz --strip-components=1 -C /tmp/mongo-c-driver
+          mkdir -p /tmp/mongo-c-driver/build && cd /tmp/mongo-c-driver/build
+          cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF ..
+          make -j"$(nproc)"
+          sudo make install
+
+      - name: Build mongo-cxx-driver
+        if: steps.cache-mongocxx.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.3.1/mongo-cxx-driver-r4.3.1.tar.gz -o /tmp/mongo-cxx-driver.tar.gz
+          mkdir /tmp/mongo-cxx-driver && tar xzf /tmp/mongo-cxx-driver.tar.gz --strip-components=1 -C /tmp/mongo-cxx-driver
+          mkdir -p /tmp/mongo-cxx-driver/build && cd /tmp/mongo-cxx-driver/build
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 \
+                -DBUILD_SHARED_LIBS=ON -DCMAKE_PREFIX_PATH=/usr/local ..
+          make -j"$(nproc)"
+          sudo make install
+
+      - name: ldconfig
+        run: sudo ldconfig
+
+      - name: colcon build
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon build --packages-up-to fms_robot_agent fms_fleet_server \
+            --cmake-args -DBUILD_TESTING=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: clang-tidy
+        run: |
+          fail=0
+          for f in src/fms_robot_agent/src/*.cpp src/fms_robot_agent/src/bt_nodes/*.cpp; do
+            clang-tidy -p build/fms_robot_agent "$f" || fail=1
+          done
+          for f in src/fms_fleet_server/src/*.cpp; do
+            clang-tidy -p build/fms_fleet_server "$f" || fail=1
+          done
+          exit $fail
+
+      - name: colcon test
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          colcon test --packages-select fms_fleet_server fms_robot_agent
+          colcon test-result --verbose
+
+  # fms_api (Python/FastAPI) — independent of the ROS build, no ROS needed.
+  fms-api:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: src/fms_api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements-dev.txt
+      - run: ./generate_grpc.sh
+      - run: ruff check fms_api tests
+      - run: pytest tests/ -v
+
+  # Validates both Dockerfiles still build (Phase 4.6). Doesn't start the
+  # stack — that needs mongodb/rabbitmq on host ports already exercised by
+  # ros-build-lint-test's service containers above, and would conflict with
+  # this job using the same shared runner ports if run in parallel.
+  docker-build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f docker/docker-compose.yml build
