@@ -21,6 +21,7 @@
 #include "fms_robot_agent/battery_model.hpp"
 
 #include <atomic>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -61,7 +62,10 @@ public:
   std::mutex fsm_mutex_;
 
   // Tasks  (all guarded by task_mutex_)
-  std::optional<fms_msgs::msg::TaskAssignment> pending_task_;
+  // FIFO of not-yet-started assignments. A queue (not a single slot) so a
+  // task arriving while the robot is still mid-task waits instead of
+  // silently overwriting/dropping whatever was already queued.
+  std::deque<fms_msgs::msg::TaskAssignment>    pending_tasks_;
   std::optional<fms_msgs::msg::TaskAssignment> current_task_;
   std::optional<fms_msgs::msg::TaskAssignment> interrupted_task_;
   std::mutex task_mutex_;

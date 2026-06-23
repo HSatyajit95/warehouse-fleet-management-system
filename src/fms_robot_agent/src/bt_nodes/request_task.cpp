@@ -32,9 +32,9 @@ BT::NodeStatus RequestTask::onRunning() {
       node_->interrupted_task_.reset();
       RCLCPP_INFO(node_->get_logger(), "[RequestTask] Resuming interrupted task %s",
                   task->task_id.c_str());
-    } else if (node_->pending_task_.has_value()) {
-      task = std::move(node_->pending_task_);
-      node_->pending_task_.reset();
+    } else if (!node_->pending_tasks_.empty()) {
+      task = std::move(node_->pending_tasks_.front());
+      node_->pending_tasks_.pop_front();
     }
   }
 

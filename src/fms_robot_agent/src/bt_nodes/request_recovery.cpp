@@ -28,11 +28,21 @@ BT::NodeStatus RequestRecovery::onRunning() {
   int max_attempts = getInput<int>("max_attempts").value_or(node_->recovery_max_attempts_);
 
   if (phase_ == RecoveryPhase::SPIN) {
-    std::lock_guard<std::mutex> lk(mutex_);
-    if (!spin_state_) return BT::NodeStatus::RUNNING;
-    if (!spin_state_->result_received) return BT::NodeStatus::RUNNING;
+    // start_spin()/start_backup() below lock mutex_ themselves — read the
+    // shared state and release lk first, or calling them while still
+    // holding lk self-deadlocks this thread on the non-recursive
+    // mutex_ (which also freezes battery_timer_/status_timer_, since
+    // they share this BT tick's callback group/thread).
+    bool received, success;
+    {
+      std::lock_guard<std::mutex> lk(mutex_);
+      if (!spin_state_) return BT::NodeStatus::RUNNING;
+      received = spin_state_->result_received;
+      success  = spin_state_->result_success;
+    }
+    if (!received) return BT::NodeStatus::RUNNING;
 
-    if (spin_state_->result_success) {
+    if (success) {
       RCLCPP_DEBUG(node_->get_logger(), "[RequestRecovery] Spin done, starting backup.");
       phase_ = RecoveryPhase::BACKUP;
       start_backup();
@@ -50,11 +60,16 @@ BT::NodeStatus RequestRecovery::onRunning() {
   }
 
   if (phase_ == RecoveryPhase::BACKUP) {
-    std::lock_guard<std::mutex> lk(mutex_);
-    if (!backup_state_) return BT::NodeStatus::RUNNING;
-    if (!backup_state_->result_received) return BT::NodeStatus::RUNNING;
+    bool received, success;
+    {
+      std::lock_guard<std::mutex> lk(mutex_);
+      if (!backup_state_) return BT::NodeStatus::RUNNING;
+      received = backup_state_->result_received;
+      success  = backup_state_->result_success;
+    }
+    if (!received) return BT::NodeStatus::RUNNING;
 
-    if (backup_state_->result_success) {
+    if (success) {
       phase_ = RecoveryPhase::DONE;
     } else {
       RCLCPP_WARN(node_->get_logger(), "[RequestRecovery] Backup failed.");
@@ -95,7 +110,15 @@ void RequestRecovery::onHalted() {
 }
 
 void RequestRecovery::start_spin() {
-  if (!node_->spin_client_->wait_for_action_server(std::chrono::seconds(2))) {
+  // action_server_is_ready() (not wait_for_action_server()) — this runs
+  // inside the BT tick on cb_group_timer_, which shares a 2-thread
+  // MultiThreadedExecutor with the action-result callback group. A
+  // blocking wait here can starve that thread (and with it
+  // battery_timer_/status_timer_, also on cb_group_timer_) well past its
+  // nominal timeout. The behavior_server's spin/backup servers are
+  // long-lived Nav2 lifecycle nodes brought up once at startup, so an
+  // instant readiness check is sufficient here.
+  if (!node_->spin_client_->action_server_is_ready()) {
     RCLCPP_WARN(node_->get_logger(), "[RequestRecovery] Spin action server not ready.");
     std::lock_guard<std::mutex> lk(mutex_);
     spin_state_ = std::make_shared<RecovState>();
@@ -131,7 +154,8 @@ void RequestRecovery::start_spin() {
 }
 
 void RequestRecovery::start_backup() {
-  if (!node_->backup_client_->wait_for_action_server(std::chrono::seconds(2))) {
+  // See start_spin()'s comment — non-blocking check for the same reason.
+  if (!node_->backup_client_->action_server_is_ready()) {
     RCLCPP_WARN(node_->get_logger(), "[RequestRecovery] BackUp action server not ready.");
     std::lock_guard<std::mutex> lk(mutex_);
     backup_state_ = std::make_shared<RecovState>();

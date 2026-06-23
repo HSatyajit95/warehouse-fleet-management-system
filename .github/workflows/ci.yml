@@ -44,7 +44,16 @@ jobs:
             build-essential cmake clang-tidy \
             libgrpc++-dev protobuf-compiler-grpc libprotobuf-dev protobuf-compiler \
             librabbitmq-dev nlohmann-json3-dev \
-            ros-humble-std-srvs python3-colcon-common-extensions
+            ros-humble-std-srvs \
+            ros-humble-behaviortree-cpp-v3 \
+            ros-humble-nav2-msgs \
+            python3-colcon-common-extensions
+    
+      - name: Install ROS package dependencies
+        run: |
+          source /opt/ros/humble/setup.bash
+          rosdep update
+          rosdep install --from-paths src --ignore-src -r -y
 
       # mongo-c-driver/mongo-cxx-driver aren't packaged for apt at the
       # versions this project needs (see docs/PHASE3_PREREQUISITES.md), so
