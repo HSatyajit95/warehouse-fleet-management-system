@@ -34,3 +34,6 @@ outputs/
 # Misc
 *.bak
 *.swp
+
+# Some extra files
+GIT_Actions_Error.txt

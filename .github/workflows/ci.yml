@@ -130,7 +130,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ./generate_grpc.sh
       - run: ruff check fms_api tests
-      - run: pytest tests/ -v
+      - run: python -m pytest tests/ -v
 
   # Validates both Dockerfiles still build (Phase 4.6). Doesn't start the
   # stack — that needs mongodb/rabbitmq on host ports already exercised by
