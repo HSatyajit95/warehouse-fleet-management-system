@@ -49,11 +49,19 @@ jobs:
             ros-humble-nav2-msgs \
             python3-colcon-common-extensions
     
+      # Scoped to the same three packages colcon builds below (see comment
+      # at the top of this job) — rosdep install --from-paths src would
+      # otherwise also resolve fms_navigation's nav2_bringup/slam_toolbox
+      # deps, which pull in apt packages unrelated to this build and were
+      # failing to install. libgrpc++-dev has no rosdep key (confirmed via
+      # `rosdep resolve libgrpc++-dev`) and is already installed explicitly
+      # above, so it's skipped here rather than left to abort the install.
       - name: Install ROS package dependencies
         run: |
           source /opt/ros/humble/setup.bash
           rosdep update
-          rosdep install --from-paths src --ignore-src -r -y
+          rosdep install --from-paths src/fms_msgs src/fms_robot_agent src/fms_fleet_server \
+            --ignore-src -r -y --skip-keys="libgrpc++-dev"
 
       # mongo-c-driver/mongo-cxx-driver aren't packaged for apt at the
       # versions this project needs (see docs/PHASE3_PREREQUISITES.md), so
