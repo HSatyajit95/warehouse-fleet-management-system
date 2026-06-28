@@ -115,6 +115,12 @@ jobs:
           done
           exit $fail
 
+      # task_lifecycle_integration (fms_fleet_server's cTest) generates gRPC
+      # stubs at test-time via `python3 -m grpc_tools.protoc` — install the
+      # package providing that module before running tests.
+      - name: Install Python test dependencies
+        run: pip install grpcio-tools
+
       - name: colcon test
         run: |
           source /opt/ros/humble/setup.bash
