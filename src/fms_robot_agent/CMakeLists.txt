@@ -78,4 +78,13 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_robot_fsm test/test_robot_fsm.cpp)
+  target_link_libraries(test_robot_fsm fms_agent_lib)
+
+  ament_add_gtest(test_battery_model test/test_battery_model.cpp)
+  target_link_libraries(test_battery_model fms_agent_lib)
+endif()
+
 ament_package()

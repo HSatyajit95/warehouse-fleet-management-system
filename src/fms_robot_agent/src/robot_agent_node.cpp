@@ -257,14 +257,9 @@ void RobotAgentNode::task_assignment_cb(
     const fms_msgs::msg::TaskAssignment::SharedPtr msg)
 {
   std::lock_guard<std::mutex> lk(task_mutex_);
-  if (pending_task_.has_value()) {
-    RCLCPP_WARN(get_logger(), "[%s] Dropping queued task %s (new task %s arrived).",
-                robot_name_.c_str(),
-                pending_task_->task_id.c_str(),
-                msg->task_id.c_str());
-  }
-  pending_task_ = *msg;
-  RCLCPP_INFO(get_logger(), "[%s] Task %s received.", robot_name_.c_str(), msg->task_id.c_str());
+  pending_tasks_.push_back(*msg);
+  RCLCPP_INFO(get_logger(), "[%s] Task %s received (queue depth now %zu).",
+              robot_name_.c_str(), msg->task_id.c_str(), pending_tasks_.size());
 }
 
 bool RobotAgentNode::fault_service_cb(

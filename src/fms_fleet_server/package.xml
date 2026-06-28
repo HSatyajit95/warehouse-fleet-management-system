@@ -12,6 +12,7 @@
   <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>fms_msgs</depend>
   <depend>nlohmann-json-dev</depend>
   <depend>librabbitmq-dev</depend>
@@ -19,6 +20,8 @@
   <depend>protobuf-compiler</depend>
   <depend>libgrpc++-dev</depend>
   <depend>protobuf-compiler-grpc</depend>
+
+  <test_depend>ament_cmake_gtest</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

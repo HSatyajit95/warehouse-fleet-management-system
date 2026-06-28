@@ -16,6 +16,11 @@ service FleetService {
   // Look up a task's lifecycle record (ASSIGNED/COMPLETED/FAILED/CANCELLED)
   // from the `tasks` MongoDB collection.
   rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse);
+
+  // Send a command to a single robot. Forwards to that robot's
+  // /<robot_id>/inject_fault service (the only command the Phase 2 robot
+  // agent currently exposes).
+  rpc SendRobotCommand(SendRobotCommandRequest) returns (SendRobotCommandResponse);
 }
 
 message Pose2D {
@@ -66,4 +71,15 @@ message GetTaskStatusResponse {
   int32  result         = 5;
   double duration_secs = 6;
   string error_message = 7;
+}
+
+message SendRobotCommandRequest {
+  string robot_id = 1;
+  string command   = 2;  // only "inject_fault" is currently supported
+  bool   value     = 3;  // true = inject fault, false = clear fault
+}
+
+message SendRobotCommandResponse {
+  bool   success = 1;
+  string message = 2;
 }

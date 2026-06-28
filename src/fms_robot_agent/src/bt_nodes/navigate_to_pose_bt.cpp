@@ -19,7 +19,13 @@ BT::NodeStatus NavigateToPoseBT::onStart() {
     return BT::NodeStatus::FAILURE;
   }
 
-  if (!node_->nav_client_->wait_for_action_server(std::chrono::seconds(3))) {
+  // action_server_is_ready() (not wait_for_action_server()) — onStart()
+  // runs inside the BT tick on cb_group_timer_, which shares a 2-thread
+  // MultiThreadedExecutor with the action-result callback group; a
+  // blocking wait here risks starving that thread (and battery_timer_/
+  // status_timer_ along with it) well past its nominal timeout. See the
+  // same fix in request_recovery.cpp for the confirmed case of this.
+  if (!node_->nav_client_->action_server_is_ready()) {
     RCLCPP_WARN(node_->get_logger(), "[NavigateToPose:%s] Action server not ready.", name().c_str());
     return BT::NodeStatus::FAILURE;
   }

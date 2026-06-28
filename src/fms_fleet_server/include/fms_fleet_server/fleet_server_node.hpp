@@ -4,6 +4,7 @@
 #include <fms_msgs/msg/robot_status.hpp>
 #include <fms_msgs/msg/task_assignment.hpp>
 #include <fms_msgs/msg/task_completion.hpp>
+#include <std_srvs/srv/set_bool.hpp>
 
 #include "fms_fleet_server/mongo_store.hpp"
 #include "fms_fleet_server/rabbitmq_client.hpp"
@@ -46,6 +47,17 @@ public:
   // Look up a task's lifecycle record from the `tasks` collection.
   std::optional<TaskRecord> get_task_status(const std::string& task_id);
 
+  struct CommandResult {
+    bool success;
+    std::string message;
+  };
+
+  // Forward `command` to `robot_id`. Only "inject_fault" is currently
+  // supported (calls that robot's /<robot_id>/inject_fault SetBool
+  // service with `value`). Blocks for up to 2s waiting for the robot's
+  // response.
+  CommandResult send_robot_command(const std::string& robot_id, const std::string& command, bool value);
+
 private:
   void robot_status_cb(const fms_msgs::msg::RobotStatus::SharedPtr msg);
   void task_completion_cb(const fms_msgs::msg::TaskCompletion::SharedPtr msg);
@@ -72,6 +84,7 @@ private:
   std::vector<rclcpp::Subscription<fms_msgs::msg::TaskCompletion>::SharedPtr> completion_subs_;
   rclcpp::Subscription<fms_msgs::msg::TaskAssignment>::SharedPtr task_request_sub_;
   std::vector<rclcpp::Publisher<fms_msgs::msg::TaskAssignment>::SharedPtr> task_assignment_pubs_;
+  std::map<std::string, rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr> fault_clients_;
   rclcpp::TimerBase::SharedPtr summary_timer_;
 
   std::mutex fleet_mutex_;
